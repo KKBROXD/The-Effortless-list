@@ -650,60 +650,6 @@
                 loading.style.display = 'none';
                 leaderboardList.innerHTML = '<div class="message error">Failed to load leaderboard. Please try again later.</div>';
             }
-        }: center; padding: 20px;">No levels approved yet!</div>';
-                    return;
-                }
-                
-                levels.forEach(level => {
-                    const levelDiv = document.createElement('div');
-                    levelDiv.className = 'level-item';
-                    levelDiv.innerHTML = `
-                        <div class="level-name">${level.name}</div>
-                        <div class="level-creator">by ${level.creator}</div>
-                        <div>Level ID: ${level.levelId}</div>
-                        <div class="level-points">${level.points} points</div>
-                    `;
-                    levelList.appendChild(levelDiv);
-                });
-            } catch (error) {
-                loading.style.display = 'none';
-                levelList.innerHTML = '<div class="message error">Failed to load levels. Please try again later.</div>';
-            }
-        }
-
-        async function loadLeaderboard() {
-            const leaderboardList = document.getElementById('leaderboardList');
-            const loading = document.getElementById('leaderboardLoading');
-            
-            try {
-                loading.style.display = 'block';
-                leaderboardList.innerHTML = '';
-                
-                const leaderboard = await apiCall('/api/leaderboard');
-                loading.style.display = 'none';
-                
-                // Sort players by points
-                const sortedPlayers = Object.entries(leaderboard)
-                    .sort(([,a], [,b]) => b - a);
-                
-                if (sortedPlayers.length === 0) {
-                    leaderboardList.innerHTML = '<div style="text-align: center; padding: 20px;">No players on leaderboard yet!</div>';
-                    return;
-                }
-                
-                sortedPlayers.forEach(([player, points], index) => {
-                    const playerDiv = document.createElement('div');
-                    playerDiv.className = 'player-item';
-                    playerDiv.innerHTML = `
-                        <span class="rank">#${index + 1}</span>
-                        <strong>${player}</strong> - ${points} points
-                    `;
-                    leaderboardList.appendChild(playerDiv);
-                });
-            } catch (error) {
-                loading.style.display = 'none';
-                leaderboardList.innerHTML = '<div class="message error">Failed to load leaderboard. Please try again later.</div>';
-            }
         }
 
         function toggleSubmissionForm() {
