@@ -792,6 +792,11 @@
                 
                 records.push(newRecord);
                 localStorage.setItem('effortlessRecords', JSON.stringify(records));
+                
+                // Trigger data sync event
+                window.dispatchEvent(new CustomEvent('effortlessDataSync', { 
+                    detail: { type: 'recordAdded', record: newRecord } 
+                }));
             } else {
                 // Add to approved levels
                 const levels = JSON.parse(localStorage.getItem('effortlessApprovedLevels') || '[]');
@@ -805,11 +810,16 @@
                     levelId: submission.levelId,
                     verificationVideo: submission.footage,
                     position: maxPosition + 1,
-                    points: 100 - (maxPosition * 5) // Simple point calculation
+                    points: Math.max(100 - (maxPosition * 5), 10) // Simple point calculation with minimum
                 };
                 
                 levels.push(newLevel);
                 localStorage.setItem('effortlessApprovedLevels', JSON.stringify(levels));
+                
+                // Trigger data sync event
+                window.dispatchEvent(new CustomEvent('effortlessDataSync', { 
+                    detail: { type: 'levelAdded', level: newLevel } 
+                }));
             }
             
             // Mark submission as approved
@@ -861,13 +871,35 @@
             }
             
             const levels = JSON.parse(localStorage.getItem('effortlessApprovedLevels') || '[]');
+            const levelToDelete = levels.find(l => l.id === levelId);
             const filteredLevels = levels.filter(l => l.id !== levelId);
+            
+            // Reorder positions after deletion
+            filteredLevels.sort((a, b) => (a.position || 999) - (b.position || 999));
+            filteredLevels.forEach((level, index) => {
+                level.position = index + 1;
+            });
+            
             localStorage.setItem('effortlessApprovedLevels', JSON.stringify(filteredLevels));
             
-            // Also remove related records
+            // Also remove related records and update submission references
             const records = JSON.parse(localStorage.getItem('effortlessRecords') || '[]');
             const filteredRecords = records.filter(r => r.levelId !== levelId);
             localStorage.setItem('effortlessRecords', JSON.stringify(filteredRecords));
+            
+            // Update any pending submissions that reference this level
+            const submissions = JSON.parse(localStorage.getItem('effortlessSubmissions') || '[]');
+            submissions.forEach(submission => {
+                if (submission.type === 'record' && submission.levelId === levelId) {
+                    submission.levelName = `${levelToDelete?.name || 'Deleted Level'} (DELETED)`;
+                }
+            });
+            localStorage.setItem('effortlessSubmissions', JSON.stringify(submissions));
+            
+            // Trigger data sync event
+            window.dispatchEvent(new CustomEvent('effortlessDataSync', { 
+                detail: { type: 'levelDeleted', levelId: levelId } 
+            }));
             
             loadLevels();
             loadDashboard();
@@ -879,8 +911,14 @@
             }
             
             const records = JSON.parse(localStorage.getItem('effortlessRecords') || '[]');
+            const recordToDelete = records.find(r => r.id === recordId);
             const filteredRecords = records.filter(r => r.id !== recordId);
             localStorage.setItem('effortlessRecords', JSON.stringify(filteredRecords));
+            
+            // Trigger data sync event
+            window.dispatchEvent(new CustomEvent('effortlessDataSync', { 
+                detail: { type: 'recordDeleted', recordId: recordId, playerName: recordToDelete?.playerName } 
+            }));
             
             loadRecords();
             loadDashboard();
@@ -901,23 +939,87 @@
             
             if (levelIndex === -1) return;
             
+            const oldPosition = levels[levelIndex].position;
+            const newPosition = parseInt(document.getElementById('editLevelPosition').value);
+            const oldPoints = levels[levelIndex].points;
+            const newPoints = parseInt(document.getElementById('editLevelPoints').value);
+            const oldName = levels[levelIndex].name;
+            const newName = document.getElementById('editLevelName').value;
+            
             // Update level data
             levels[levelIndex] = {
                 ...levels[levelIndex],
-                name: document.getElementById('editLevelName').value,
+                name: newName,
                 creator: document.getElementById('editLevelCreator').value,
                 verifier: document.getElementById('editLevelVerifier').value,
-                position: parseInt(document.getElementById('editLevelPosition').value),
-                points: parseInt(document.getElementById('editLevelPoints').value),
+                position: newPosition,
+                points: newPoints,
                 levelId: document.getElementById('editLevelId').value,
                 verificationVideo: document.getElementById('editLevelVideo').value
             };
             
+            // If position changed, reorder other levels
+            if (oldPosition !== newPosition) {
+                levels.forEach(level => {
+                    if (level.id !== currentEditingLevel.id) {
+                        if (oldPosition < newPosition && level.position > oldPosition && level.position <= newPosition) {
+                            level.position--;
+                        } else if (oldPosition > newPosition && level.position >= newPosition && level.position < oldPosition) {
+                            level.position++;
+                        }
+                    }
+                });
+            }
+            
             localStorage.setItem('effortlessApprovedLevels', JSON.stringify(levels));
+            
+            // Update points in existing records if points changed
+            if (oldPoints !== newPoints) {
+                const records = JSON.parse(localStorage.getItem('effortlessRecords') || '[]');
+                records.forEach(record => {
+                    if (record.levelId === currentEditingLevel.id) {
+                        record.points = newPoints;
+                    }
+                });
+                localStorage.setItem('effortlessRecords', JSON.stringify(records));
+            }
+            
+            // Update level name in records and submissions if name changed
+            if (oldName !== newName) {
+                const records = JSON.parse(localStorage.getItem('effortlessRecords') || '[]');
+                records.forEach(record => {
+                    if (record.levelId === currentEditingLevel.id) {
+                        record.levelName = newName;
+                    }
+                });
+                localStorage.setItem('effortlessRecords', JSON.stringify(records));
+                
+                const submissions = JSON.parse(localStorage.getItem('effortlessSubmissions') || '[]');
+                submissions.forEach(submission => {
+                    if (submission.type === 'record' && submission.levelId === currentEditingLevel.id) {
+                        submission.levelName = newName;
+                    }
+                });
+                localStorage.setItem('effortlessSubmissions', JSON.stringify(submissions));
+            }
+            
+            // Trigger data sync event
+            window.dispatchEvent(new CustomEvent('effortlessDataSync', { 
+                detail: { 
+                    type: 'levelEdited', 
+                    levelId: currentEditingLevel.id,
+                    changes: {
+                        name: oldName !== newName,
+                        position: oldPosition !== newPosition,
+                        points: oldPoints !== newPoints
+                    }
+                } 
+            }));
             
             // Close modal and reload
             closeModal('editLevelModal');
             loadLevels();
+            loadDashboard();
             currentEditingLevel = null;
         });
 
