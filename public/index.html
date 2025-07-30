@@ -626,6 +626,7 @@
                 
                 formData.ign = ign;
                 formData.footage = footage;
+                formData.title = `${ign} - Record Submission`;
             } else {
                 const name = document.getElementById('levelName').value.trim();
                 const creator = document.getElementById('levelCreator').value.trim();
@@ -643,13 +644,28 @@
                 formData.verifier = verifier;
                 formData.levelId = levelId;
                 formData.footage = footage;
+                formData.title = name;
             }
             
             try {
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
                 
-                // Simulate API call - in real implementation, this would be an actual API call
+                // Add unique ID and timestamp
+                formData.id = Date.now();
+                formData.timestamp = new Date().toISOString();
+                formData.status = 'pending';
+                
+                // Get existing submissions from localStorage
+                const existingSubmissions = JSON.parse(localStorage.getItem('effortlessSubmissions') || '[]');
+                
+                // Add new submission
+                existingSubmissions.push(formData);
+                
+                // Save back to localStorage
+                localStorage.setItem('effortlessSubmissions', JSON.stringify(existingSubmissions));
+                
+                // Simulate API delay
                 await new Promise(resolve => setTimeout(resolve, 1500));
                 
                 // Clear form
@@ -657,8 +673,8 @@
                 
                 // Show success message
                 const successMessage = type === 'record' 
-                    ? 'Record submitted successfully! It will be reviewed and added to the leaderboard if approved.'
-                    : 'Level submitted successfully! It will be reviewed and added to the main list if approved.';
+                    ? 'Record submitted successfully! Check the admin panel to review.'
+                    : 'Level submitted successfully! Check the admin panel to review.';
                     
                 messageDiv.innerHTML = `<div class="message success">${successMessage}</div>`;
                 
