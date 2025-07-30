@@ -805,6 +805,8 @@
                 loadLevels();
             } else if (sectionId === 'leaderboard') {
                 loadLeaderboard();
+            } else if (sectionId === 'submit') {
+                updateRecordLevelOptions(); // Refresh level options when opening submit
             }
         }
 
@@ -921,6 +923,61 @@
             initializeSampleData();
             loadLevels();
             updateRecordLevelOptions();
+            
+            // Listen for data sync events from admin panel
+            window.addEventListener('effortlessDataSync', function(event) {
+                const { type, levelId, recordId, playerName, level, record, changes } = event.detail;
+                
+                switch(type) {
+                    case 'levelAdded':
+                        loadLevels();
+                        updateRecordLevelOptions();
+                        if (document.getElementById('leaderboard').classList.contains('active')) {
+                            loadLeaderboard();
+                        }
+                        break;
+                        
+                    case 'levelEdited':
+                        loadLevels();
+                        updateRecordLevelOptions();
+                        if (changes && (changes.points || changes.name)) {
+                            // Reload leaderboard if points or name changed
+                            if (document.getElementById('leaderboard').classList.contains('active')) {
+                                loadLeaderboard();
+                            }
+                        }
+                        break;
+                        
+                    case 'levelDeleted':
+                        loadLevels();
+                        updateRecordLevelOptions();
+                        if (document.getElementById('leaderboard').classList.contains('active')) {
+                            loadLeaderboard();
+                        }
+                        break;
+                        
+                    case 'recordAdded':
+                        if (document.getElementById('leaderboard').classList.contains('active')) {
+                            loadLeaderboard();
+                        }
+                        break;
+                        
+                    case 'recordDeleted':
+                        if (document.getElementById('leaderboard').classList.contains('active')) {
+                            loadLeaderboard();
+                        }
+                        break;
+                }
+            });
+            
+            // Auto-refresh data every 30 seconds if another tab might have made changes
+            setInterval(function() {
+                if (document.getElementById('levels').classList.contains('active')) {
+                    loadLevels();
+                } else if (document.getElementById('leaderboard').classList.contains('active')) {
+                    loadLeaderboard();
+                }
+            }, 30000);
         });
     </script>
 </body>
