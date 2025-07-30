@@ -186,11 +186,29 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.1);
         }
         
+        .level-rank {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #0a0a0a;
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+        }
+        
         .level-name {
             font-size: 1.4rem;
             font-weight: 700;
             color: #f1f5f9;
             margin-bottom: 8px;
+            margin-top: 10px;
         }
         
         .level-creator {
@@ -214,6 +232,31 @@
             border-radius: 20px;
             font-weight: 600;
             font-size: 0.85rem;
+        }
+        
+        .level-video {
+            margin-top: 12px;
+        }
+        
+        .video-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+        
+        .video-link:hover {
+            color: #93c5fd;
+        }
+        
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         }
         
         .leaderboard-item {
@@ -500,12 +543,7 @@
                 <h2 class="section-title">📋 Main List</h2>
                 <p class="section-description">Discover the most challenging levels approved by our community</p>
             </div>
-            <div class="empty-state">
-                <div class="icon">📝</div>
-                <h3>No levels approved yet!</h3>
-                <p>The list is just getting started. Be the first to submit a level for review and help build this community!</p>
-                <button class="cta-btn" onclick="showSection('submit'); document.querySelector('[onclick*=submit]').classList.add('active'); document.querySelector('[onclick*=levels]').classList.remove('active');">Submit First Level</button>
-            </div>
+            <div id="levelsContent"></div>
         </div>
         
         <div id="leaderboard" class="section">
@@ -513,11 +551,7 @@
                 <h2 class="section-title">🏆 Player Leaderboard</h2>
                 <p class="section-description">See who's dominating the leaderboard</p>
             </div>
-            <div class="empty-state">
-                <div class="icon">🏆</div>
-                <h3>No players on leaderboard yet!</h3>
-                <p>Complete some levels to earn your place here and show off your skills to the community.</p>
-            </div>
+            <div id="leaderboardContent"></div>
         </div>
         
         <div id="submit" class="section">
@@ -537,6 +571,12 @@
                     </div>
                     
                     <div id="recordForm">
+                        <div class="form-group">
+                            <label>Level (from list):</label>
+                            <select id="recordLevel">
+                                <option value="">Select a level</option>
+                            </select>
+                        </div>
                         <div class="form-group">
                             <label>In-Game Name (IGN):</label>
                             <input type="text" id="recordIgn" placeholder="Enter your IGN">
@@ -578,6 +618,173 @@
     </div>
 
     <script>
+        // Initialize sample data if not exists
+        function initializeSampleData() {
+            const approvedLevels = JSON.parse(localStorage.getItem('effortlessApprovedLevels') || '[]');
+            const records = JSON.parse(localStorage.getItem('effortlessRecords') || '[]');
+            
+            if (approvedLevels.length === 0) {
+                const sampleLevels = [
+                    {
+                        id: 1,
+                        name: "Bloodbath",
+                        creator: "Riot",
+                        verifier: "Riot",
+                        levelId: "10565740",
+                        points: 100,
+                        verificationVideo: "https://www.youtube.com/watch?v=example1",
+                        position: 1
+                    },
+                    {
+                        id: 2,
+                        name: "Sonic Wave",
+                        creator: "Cyclic",
+                        verifier: "Sunix",
+                        levelId: "26681070",
+                        points: 95,
+                        verificationVideo: "https://www.youtube.com/watch?v=example2",
+                        position: 2
+                    },
+                    {
+                        id: 3,
+                        name: "Cataclysm",
+                        creator: "Ggb0y",
+                        verifier: "Ggb0y",
+                        levelId: "3979721",
+                        points: 90,
+                        verificationVideo: "https://www.youtube.com/watch?v=example3",
+                        position: 3
+                    }
+                ];
+                localStorage.setItem('effortlessApprovedLevels', JSON.stringify(sampleLevels));
+            }
+            
+            if (records.length === 0) {
+                const sampleRecords = [
+                    {
+                        id: 1,
+                        levelId: 1,
+                        levelName: "Bloodbath",
+                        playerName: "Riot",
+                        videoUrl: "https://www.youtube.com/watch?v=example1",
+                        points: 100,
+                        timestamp: new Date().toISOString()
+                    },
+                    {
+                        id: 2,
+                        levelId: 2,
+                        levelName: "Sonic Wave",
+                        playerName: "Sunix",
+                        videoUrl: "https://www.youtube.com/watch?v=example2",
+                        points: 95,
+                        timestamp: new Date().toISOString()
+                    },
+                    {
+                        id: 3,
+                        levelId: 1,
+                        levelName: "Bloodbath",
+                        playerName: "Technical",
+                        videoUrl: "https://www.youtube.com/watch?v=example3",
+                        points: 100,
+                        timestamp: new Date().toISOString()
+                    }
+                ];
+                localStorage.setItem('effortlessRecords', JSON.stringify(sampleRecords));
+            }
+        }
+
+        function loadLevels() {
+            const levels = JSON.parse(localStorage.getItem('effortlessApprovedLevels') || '[]');
+            const levelsContent = document.getElementById('levelsContent');
+            
+            if (levels.length === 0) {
+                levelsContent.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📝</div>
+                        <h3>No levels approved yet!</h3>
+                        <p>The list is just getting started. Be the first to submit a level for review and help build this community!</p>
+                        <button class="cta-btn" onclick="showSection('submit'); document.querySelector('[onclick*=submit]').classList.add('active'); document.querySelector('[onclick*=levels]').classList.remove('active');">Submit First Level</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort levels by position
+            levels.sort((a, b) => (a.position || 999) - (b.position || 999));
+            
+            const levelsHtml = levels.map(level => `
+                <div class="card">
+                    <div class="level-rank">${level.position || '?'}</div>
+                    <div class="level-name">${level.name}</div>
+                    <div class="level-creator">by ${level.creator}</div>
+                    <div class="level-info">Verified by ${level.verifier} • ID: ${level.levelId}</div>
+                    <div class="level-points">${level.points || 0} pts</div>
+                    ${level.verificationVideo ? `
+                        <div class="level-video">
+                            <a href="${level.verificationVideo}" target="_blank" class="video-link">
+                                ▶️ Verification Video
+                            </a>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+            
+            levelsContent.innerHTML = `<div class="grid">${levelsHtml}</div>`;
+            
+            // Update record form dropdown
+            updateRecordLevelOptions();
+        }
+        
+        function updateRecordLevelOptions() {
+            const levels = JSON.parse(localStorage.getItem('effortlessApprovedLevels') || '[]');
+            const recordLevelSelect = document.getElementById('recordLevel');
+            
+            recordLevelSelect.innerHTML = '<option value="">Select a level</option>';
+            levels.forEach(level => {
+                recordLevelSelect.innerHTML += `<option value="${level.id}">${level.name} by ${level.creator}</option>`;
+            });
+        }
+
+        function loadLeaderboard() {
+            const records = JSON.parse(localStorage.getItem('effortlessRecords') || '[]');
+            const leaderboardContent = document.getElementById('leaderboardContent');
+            
+            if (records.length === 0) {
+                leaderboardContent.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">🏆</div>
+                        <h3>No players on leaderboard yet!</h3>
+                        <p>Complete some levels to earn your place here and show off your skills to the community.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Calculate player scores
+            const playerScores = {};
+            records.forEach(record => {
+                if (!playerScores[record.playerName]) {
+                    playerScores[record.playerName] = 0;
+                }
+                playerScores[record.playerName] += record.points;
+            });
+            
+            // Convert to array and sort by points
+            const sortedPlayers = Object.entries(playerScores)
+                .map(([name, points]) => ({ name, points }))
+                .sort((a, b) => b.points - a.points);
+            
+            const leaderboardHtml = sortedPlayers.map((player, index) => `
+                <div class="leaderboard-item">
+                    <div class="rank">#${index + 1}</div>
+                    <div class="player-name">${player.name}</div>
+                    <div class="player-points">${player.points} pts</div>
+                </div>
+            `).join('');
+            
+            leaderboardContent.innerHTML = `<div class="leaderboard-list">${leaderboardHtml}</div>`;
+        }
+
         function showSection(sectionId) {
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
@@ -592,6 +799,13 @@
             // Show selected section and activate tab
             document.getElementById(sectionId).classList.add('active');
             event.target.classList.add('active');
+            
+            // Load content based on section
+            if (sectionId === 'levels') {
+                loadLevels();
+            } else if (sectionId === 'leaderboard') {
+                loadLeaderboard();
+            }
         }
 
         function toggleSubmissionForm() {
@@ -616,17 +830,23 @@
             let formData = { type };
             
             if (type === 'record') {
+                const levelId = document.getElementById('recordLevel').value;
                 const ign = document.getElementById('recordIgn').value.trim();
                 const footage = document.getElementById('recordFootage').value.trim();
                 
-                if (!ign || !footage) {
+                if (!levelId || !ign || !footage) {
                     messageDiv.innerHTML = '<div class="message error">Please fill in all fields</div>';
                     return;
                 }
                 
+                const levels = JSON.parse(localStorage.getItem('effortlessApprovedLevels') || '[]');
+                const selectedLevel = levels.find(l => l.id == levelId);
+                
+                formData.levelId = parseInt(levelId);
+                formData.levelName = selectedLevel ? selectedLevel.name : 'Unknown';
                 formData.ign = ign;
                 formData.footage = footage;
-                formData.title = `${ign} - Record Submission`;
+                formData.title = `${ign} - ${selectedLevel ? selectedLevel.name : 'Record'}`;
             } else {
                 const name = document.getElementById('levelName').value.trim();
                 const creator = document.getElementById('levelCreator').value.trim();
@@ -656,25 +876,31 @@
                 formData.timestamp = new Date().toISOString();
                 formData.status = 'pending';
                 
-                // Get existing submissions from localStorage
+                // Get existing submissions from memory storage
                 const existingSubmissions = JSON.parse(localStorage.getItem('effortlessSubmissions') || '[]');
                 
                 // Add new submission
                 existingSubmissions.push(formData);
                 
-                // Save back to localStorage
+                // Save back to memory storage
                 localStorage.setItem('effortlessSubmissions', JSON.stringify(existingSubmissions));
                 
                 // Simulate API delay
                 await new Promise(resolve => setTimeout(resolve, 1500));
                 
                 // Clear form
-                document.querySelectorAll('#recordForm input, #levelForm input').forEach(input => input.value = '');
+                document.querySelectorAll('#recordForm input, #recordForm select, #levelForm input').forEach(input => {
+                    if (input.type === 'select-one') {
+                        input.selectedIndex = 0;
+                    } else {
+                        input.value = '';
+                    }
+                });
                 
                 // Show success message
                 const successMessage = type === 'record' 
-                    ? 'Record submitted successfully! Check the admin panel to review.'
-                    : 'Level submitted successfully! Check the admin panel to review.';
+                    ? 'Record submitted successfully! It will be reviewed by administrators.'
+                    : 'Level submitted successfully! It will be reviewed by administrators.';
                     
                 messageDiv.innerHTML = `<div class="message success">${successMessage}</div>`;
                 
@@ -689,6 +915,13 @@
                 submitBtn.textContent = 'Submit for Review';
             }
         }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSampleData();
+            loadLevels();
+            updateRecordLevelOptions();
+        });
     </script>
 </body>
 </html>
