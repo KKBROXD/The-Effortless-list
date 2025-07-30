@@ -67,6 +67,19 @@ console.log('__dirname:', __dirname);
 console.log('process.cwd():', process.cwd());
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
+// Check if public directory exists
+const publicDir = path.join(__dirname, 'public');
+console.log('Public directory path:', publicDir);
+console.log('Public directory exists:', fs.existsSync(publicDir));
+
+if (fs.existsSync(publicDir)) {
+  const files = fs.readdirSync(publicDir);
+  console.log('Files in public directory:', files);
+} else {
+  console.log('⚠️  Public directory does not exist! Creating it...');
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
 // Data file path
 const DATA_FILE = path.join(__dirname, 'data', 'submissions.json');
 console.log('DATA_FILE path:', DATA_FILE);
@@ -318,7 +331,23 @@ app.use('*', (req, res, next) => {
 // Fallback for other pages (optional)
 app.get('*', (req, res) => {
   console.log(`Serving fallback HTML for: ${req.url}`);
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  
+  // Check if file exists before serving
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    console.error('index.html not found at:', indexPath);
+    res.status(404).send(`
+      <h1>App is running!</h1>
+      <p>But index.html is missing. Try these API endpoints:</p>
+      <ul>
+        <li><a href="/api/test">/api/test</a></li>
+        <li><a href="/api/list">/api/list</a></li>
+        <li><a href="/api/leaderboard">/api/leaderboard</a></li>
+      </ul>
+    `);
+  }
 });
 
 app.listen(PORT, () => {
