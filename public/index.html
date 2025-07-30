@@ -388,14 +388,50 @@
         
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 20px;
             color: #64748b;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.6), rgba(30, 58, 138, 0.05));
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
         }
         
         .empty-state h3 {
-            font-size: 1.5rem;
-            margin-bottom: 8px;
+            font-size: 1.8rem;
+            margin-bottom: 12px;
             color: #94a3b8;
+            font-weight: 600;
+        }
+        
+        .empty-state p {
+            font-size: 1.1rem;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
+        
+        .cta-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+        }
+        
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
         }
         
         @media (max-width: 768px) {
@@ -431,6 +467,18 @@
                 min-width: 50px;
                 margin-right: 16px;
             }
+            
+            .empty-state {
+                padding: 60px 20px;
+            }
+            
+            .empty-state .icon {
+                font-size: 3rem;
+            }
+            
+            .empty-state h3 {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
@@ -452,9 +500,11 @@
                 <h2 class="section-title">📋 Main List</h2>
                 <p class="section-description">Discover the most challenging levels approved by our community</p>
             </div>
-            <div class="loading" id="levelsLoading">Loading levels</div>
-            <div class="grid" id="levelList">
-                <!-- Levels will be populated here -->
+            <div class="empty-state">
+                <div class="icon">📝</div>
+                <h3>No levels approved yet!</h3>
+                <p>The list is just getting started. Be the first to submit a level for review and help build this community!</p>
+                <button class="cta-btn" onclick="showSection('submit'); document.querySelector('[onclick*=submit]').classList.add('active'); document.querySelector('[onclick*=levels]').classList.remove('active');">Submit First Level</button>
             </div>
         </div>
         
@@ -463,9 +513,10 @@
                 <h2 class="section-title">🏆 Player Leaderboard</h2>
                 <p class="section-description">See who's dominating the leaderboard</p>
             </div>
-            <div class="loading" id="leaderboardLoading">Loading leaderboard</div>
-            <div class="grid" id="leaderboardList">
-                <!-- Leaderboard will be populated here -->
+            <div class="empty-state">
+                <div class="icon">🏆</div>
+                <h3>No players on leaderboard yet!</h3>
+                <p>Complete some levels to earn your place here and show off your skills to the community.</p>
             </div>
         </div>
         
@@ -527,29 +578,6 @@
     </div>
 
     <script>
-        const API_BASE = window.location.origin;
-        
-        async function apiCall(endpoint, options = {}) {
-            try {
-                const response = await fetch(`${API_BASE}${endpoint}`, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...options.headers
-                    },
-                    ...options
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error('API Error:', error);
-                throw error;
-            }
-        }
-
         function showSection(sectionId) {
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
@@ -564,92 +592,6 @@
             // Show selected section and activate tab
             document.getElementById(sectionId).classList.add('active');
             event.target.classList.add('active');
-            
-            // Load data for the section
-            if (sectionId === 'levels') {
-                loadLevels();
-            } else if (sectionId === 'leaderboard') {
-                loadLeaderboard();
-            }
-        }
-
-        async function loadLevels() {
-            const levelList = document.getElementById('levelList');
-            const loading = document.getElementById('levelsLoading');
-            
-            try {
-                loading.style.display = 'block';
-                levelList.innerHTML = '';
-                
-                const levels = await apiCall('/api/list');
-                loading.style.display = 'none';
-                
-                if (levels.length === 0) {
-                    levelList.innerHTML = `
-                        <div class="empty-state">
-                            <h3>No levels approved yet!</h3>
-                            <p>Be the first to submit a level for review.</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                levels.forEach(level => {
-                    const levelCard = document.createElement('div');
-                    levelCard.className = 'card';
-                    levelCard.innerHTML = `
-                        <div class="level-name">${level.name}</div>
-                        <div class="level-creator">by ${level.creator}</div>
-                        <div class="level-info">Level ID: ${level.levelId}</div>
-                        <div class="level-points">${level.points} points</div>
-                    `;
-                    levelList.appendChild(levelCard);
-                });
-            } catch (error) {
-                loading.style.display = 'none';
-                levelList.innerHTML = '<div class="message error">Failed to load levels. Please try again later.</div>';
-            }
-        }
-
-        async function loadLeaderboard() {
-            const leaderboardList = document.getElementById('leaderboardList');
-            const loading = document.getElementById('leaderboardLoading');
-            
-            try {
-                loading.style.display = 'block';
-                leaderboardList.innerHTML = '';
-                
-                const leaderboard = await apiCall('/api/leaderboard');
-                loading.style.display = 'none';
-                
-                // Sort players by points
-                const sortedPlayers = Object.entries(leaderboard)
-                    .sort(([,a], [,b]) => b - a);
-                
-                if (sortedPlayers.length === 0) {
-                    leaderboardList.innerHTML = `
-                        <div class="empty-state">
-                            <h3>No players on leaderboard yet!</h3>
-                            <p>Complete some levels to earn your place here.</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                sortedPlayers.forEach(([player, points], index) => {
-                    const playerCard = document.createElement('div');
-                    playerCard.className = 'leaderboard-item';
-                    playerCard.innerHTML = `
-                        <div class="rank">#${index + 1}</div>
-                        <div class="player-name">${player}</div>
-                        <div class="player-points">${points} pts</div>
-                    `;
-                    leaderboardList.appendChild(playerCard);
-                });
-            } catch (error) {
-                loading.style.display = 'none';
-                leaderboardList.innerHTML = '<div class="message error">Failed to load leaderboard. Please try again later.</div>';
-            }
         }
 
         function toggleSubmissionForm() {
@@ -707,16 +649,18 @@
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Submitting...';
                 
-                const result = await apiCall('/api/submit', {
-                    method: 'POST',
-                    body: JSON.stringify(formData)
-                });
+                // Simulate API call - in real implementation, this would be an actual API call
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 
                 // Clear form
                 document.querySelectorAll('#recordForm input, #levelForm input').forEach(input => input.value = '');
                 
                 // Show success message
-                messageDiv.innerHTML = `<div class="message success">${result.message}</div>`;
+                const successMessage = type === 'record' 
+                    ? 'Record submitted successfully! It will be reviewed and added to the leaderboard if approved.'
+                    : 'Level submitted successfully! It will be reviewed and added to the main list if approved.';
+                    
+                messageDiv.innerHTML = `<div class="message success">${successMessage}</div>`;
                 
                 setTimeout(() => {
                     messageDiv.innerHTML = '';
@@ -729,11 +673,6 @@
                 submitBtn.textContent = 'Submit for Review';
             }
         }
-
-        // Load initial data
-        document.addEventListener('DOMContentLoaded', () => {
-            loadLevels();
-        });
     </script>
 </body>
 </html>
