@@ -188,10 +188,91 @@
             letter-spacing: 0.05em;
         }
         
-        .grid {
-            display: grid;
-            gap: 20px;
-            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        .submission-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(220, 38, 38, 0.05));
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .submission-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(220, 38, 38, 0.4);
+        }
+        
+        .submission-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        
+        .type-level {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .type-record {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .submission-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 8px;
+        }
+        
+        .submission-details {
+            color: #94a3b8;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        
+        .submission-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-approve {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .btn-approve:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-reject {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        
+        .btn-reject:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+        }
+        
+        .btn-view {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-view:hover {
+            background: rgba(59, 130, 246, 0.3);
+            transform: translateY(-2px);
         }
         
         .level-card {
@@ -387,19 +468,19 @@
             
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-value">0</div>
+                    <div class="stat-value" id="totalLevels">0</div>
                     <div class="stat-label">Total Levels</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">0</div>
+                    <div class="stat-value" id="totalPlayers">0</div>
                     <div class="stat-label">Active Players</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">0</div>
+                    <div class="stat-value" id="pendingSubmissions">0</div>
                     <div class="stat-label">Pending Submissions</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">0</div>
+                    <div class="stat-value" id="totalRecords">0</div>
                     <div class="stat-label">Total Records</div>
                 </div>
             </div>
@@ -431,10 +512,8 @@
                 <input type="text" class="search-input" placeholder="Search submissions..." id="submissionSearch">
             </div>
             
-            <div class="empty-state">
-                <div class="icon">📝</div>
-                <h3>No pending submissions</h3>
-                <p>New submissions will appear here for review when users submit levels or records.</p>
+            <div class="grid" id="submissionsList">
+                <!-- Submissions will be populated here -->
             </div>
         </div>
         
@@ -529,6 +608,31 @@
     </div>
 
     <script>
+        // Load data from localStorage
+        function loadSubmissions() {
+            return JSON.parse(localStorage.getItem('effortlessSubmissions') || '[]');
+        }
+        
+        function loadApprovedLevels() {
+            return JSON.parse(localStorage.getItem('effortlessLevels') || '[]');
+        }
+        
+        function loadPlayers() {
+            return JSON.parse(localStorage.getItem('effortlessPlayers') || '{}');
+        }
+        
+        function saveSubmissions(submissions) {
+            localStorage.setItem('effortlessSubmissions', JSON.stringify(submissions));
+        }
+        
+        function saveApprovedLevels(levels) {
+            localStorage.setItem('effortlessLevels', JSON.stringify(levels));
+        }
+        
+        function savePlayers(players) {
+            localStorage.setItem('effortlessPlayers', JSON.stringify(players));
+        }
+
         function showSection(sectionId) {
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
@@ -543,7 +647,241 @@
             // Show selected section and activate tab
             document.getElementById(sectionId).classList.add('active');
             event.target.classList.add('active');
+            
+            // Load data based on section
+            if (sectionId === 'dashboard') {
+                updateDashboardStats();
+            } else if (sectionId === 'submissions') {
+                renderSubmissions();
+            }
         }
+        
+        function updateDashboardStats() {
+            const submissions = loadSubmissions();
+            const levels = loadApprovedLevels();
+            const players = loadPlayers();
+            
+            document.getElementById('totalLevels').textContent = levels.length;
+            document.getElementById('totalPlayers').textContent = Object.keys(players).length;
+            document.getElementById('pendingSubmissions').textContent = submissions.length;
+            
+            // Count total records
+            let totalRecords = 0;
+            Object.values(players).forEach(player => {
+                totalRecords += player.records || 0;
+            });
+            document.getElementById('totalRecords').textContent = totalRecords;
+        }
+        
+        function renderSubmissions() {
+            const submissions = loadSubmissions();
+            const container = document.getElementById('submissionsList');
+            
+            if (submissions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="icon">📝</div>
+                        <h3>No pending submissions</h3>
+                        <p>New submissions will appear here for review when users submit levels or records.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = submissions.map(sub => {
+                if (sub.type === 'level') {
+                    return `
+                        <div class="submission-card">
+                            <div class="submission-type type-level">Level Submission</div>
+                            <div class="submission-title">${sub.title}</div>
+                            <div class="submission-details">
+                                <strong>Creator:</strong> ${sub.creator}<br>
+                                <strong>Verifier:</strong> ${sub.verifier}<br>
+                                <strong>Level ID:</strong> ${sub.levelId}<br>
+                                <strong>Submitted:</strong> ${getTimeAgo(sub.timestamp)}
+                            </div>
+                            <div class="submission-actions">
+                                <button class="btn btn-view" onclick="viewSubmission('${sub.footage}')">🔗 View Video</button>
+                                <button class="btn btn-approve" onclick="approveSubmission(${sub.id})">✅ Approve</button>
+                                <button class="btn btn-reject" onclick="rejectSubmission(${sub.id})">❌ Reject</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="submission-card">
+                            <div class="submission-type type-record">Record Submission</div>
+                            <div class="submission-title">${sub.title}</div>
+                            <div class="submission-details">
+                                <strong>Player:</strong> ${sub.ign}<br>
+                                <strong>Submitted:</strong> ${getTimeAgo(sub.timestamp)}
+                            </div>
+                            <div class="submission-actions">
+                                <button class="btn btn-view" onclick="viewSubmission('${sub.footage}')">🔗 View Video</button>
+                                <button class="btn btn-approve" onclick="approveSubmission(${sub.id})">✅ Approve</button>
+                                <button class="btn btn-reject" onclick="rejectSubmission(${sub.id})">❌ Reject</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+        
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const submissionTime = new Date(timestamp);
+            const diff = now - submissionTime;
+            const minutes = Math.floor(diff / (1000 * 60));
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            
+            if (days > 0) {
+                return `${days} day${days > 1 ? 's' : ''} ago`;
+            } else if (hours > 0) {
+                return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            } else if (minutes > 0) {
+                return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+            } else {
+                return 'Just now';
+            }
+        }
+        
+        function viewSubmission(footageUrl) {
+            if (footageUrl) {
+                window.open(footageUrl, '_blank');
+            } else {
+                showNotification('No video URL provided', 'error');
+            }
+        }
+        
+        function approveSubmission(id) {
+            const submissions = loadSubmissions();
+            const submissionIndex = submissions.findIndex(sub => sub.id === id);
+            
+            if (submissionIndex === -1) {
+                showNotification('Submission not found', 'error');
+                return;
+            }
+            
+            const submission = submissions[submissionIndex];
+            
+            if (confirm(`Are you sure you want to approve this ${submission.type} submission?`)) {
+                // Remove from submissions
+                submissions.splice(submissionIndex, 1);
+                saveSubmissions(submissions);
+                
+                if (submission.type === 'level') {
+                    // Add to approved levels
+                    const levels = loadApprovedLevels();
+                    const newLevel = {
+                        id: Date.now(),
+                        name: submission.name,
+                        creator: submission.creator,
+                        verifier: submission.verifier,
+                        levelId: submission.levelId,
+                        points: levels.length + 1, // Simple point system for now
+                        rank: levels.length + 1,
+                        timestamp: new Date().toISOString()
+                    };
+                    levels.push(newLevel);
+                    saveApprovedLevels(levels);
+                    
+                    showNotification('Level approved and added to the main list!', 'success');
+                } else {
+                    // Add to player records
+                    const players = loadPlayers();
+                    if (!players[submission.ign]) {
+                        players[submission.ign] = {
+                            name: submission.ign,
+                            totalPoints: 0,
+                            records: 0
+                        };
+                    }
+                    players[submission.ign].records += 1;
+                    players[submission.ign].totalPoints += 1; // Simple point system
+                    savePlayers(players);
+                    
+                    showNotification('Record approved and added to leaderboard!', 'success');
+                }
+                
+                // Refresh displays
+                renderSubmissions();
+                updateDashboardStats();
+            }
+        }
+        
+        function rejectSubmission(id) {
+            const reason = prompt('Reason for rejection (optional):');
+            
+            const submissions = loadSubmissions();
+            const updatedSubmissions = submissions.filter(sub => sub.id !== id);
+            
+            if (updatedSubmissions.length < submissions.length) {
+                saveSubmissions(updatedSubmissions);
+                showNotification('Submission rejected', 'error');
+                renderSubmissions();
+                updateDashboardStats();
+            } else {
+                showNotification('Submission not found', 'error');
+            }
+        }
+        
+        function showNotification(message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 16px 24px;
+                border-radius: 12px;
+                font-weight: 600;
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+                max-width: 400px;
+                ${type === 'success' ? 
+                    'background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981;' :
+                    'background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444;'
+                }
+            `;
+            
+            // Add animation styles
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            if (!document.querySelector('style[data-notifications]')) {
+                style.setAttribute('data-notifications', 'true');
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 4 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 4000);
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDashboardStats();
+            renderSubmissions();
+        });
     </script>
 </body>
 </html>
